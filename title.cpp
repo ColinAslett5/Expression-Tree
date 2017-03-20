@@ -10,9 +10,8 @@ struct Node{
   int pre;
 };
 struct Second{
-  char first[1];
+  char first[10];
   Second* nex;
-  int prec;
 };
 struct Tree{
   char* token;
@@ -34,6 +33,10 @@ char* peek2();
 char* pop2();
 //tree stuff
 Tree* getTree();
+//Is it an operator
+bool isOperator(char a);
+bool isOperator(char* a);
+bool isOperator(Tree* tree);
 int main(){
   cout << "Enter a Infix Expression!" << endl;
   char input[128];
@@ -94,6 +97,7 @@ int main(){
   }
   //line 73
   Tree* root = getTree();
+  //cout << "enter prefix,postfix, or infix" << endl;
   return 0;
 }
 //pushing for the second stack
@@ -105,13 +109,24 @@ void push2(char* x){
 }
 //points to the root of the expression tree based on the postfix expression given
 Tree* getTree(){
-  if(peek2() == 'a'){
-    cout << "1adasd" << endl;
+  cout << "ahh" << endl;
+  cout << peek2();
+  if(isOperator(peek2())){
+    Tree* tree = new Tree();
+    tree->token = pop2();
+    tree->right = getTree();
+    tree->left = getTree();
+    return tree;
+  }
+  else{
+    Tree* rootx = new Tree();
+    rootx->token = pop2();
+    return rootx;
   }
 }
 //peeking for the second stack
 char* peek2(){
-  return head2->first;
+  return head2 == NULL ? NULL : head2->first;
 }
 //popping for the second stack
 char* pop2(){
@@ -225,4 +240,14 @@ Node* pop(){
   Node* temp = head;
   head = head->next;
   return temp;
+}
+//all of the is operators
+bool isOperator(char a){
+  return a == '+' || a == '/' || a == '-' || a == '*' || a == '^';
+}
+bool isOperator(Tree* tree){
+  return isOperator(tree->token);
+}
+bool isOperator(char* a){
+  return isOperator(*a);
 }
