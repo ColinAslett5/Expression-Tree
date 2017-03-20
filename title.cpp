@@ -1,4 +1,4 @@
-//Colin Aslett, C++ Period 07, Shunting Yard Algorithm
+//Colin Aslett, C++ Period 07, Expression Tree
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
@@ -9,34 +9,52 @@ struct Node{
   Node* next;
   int pre;
 };
+struct Second{
+  char first[1];
+  Second* nex;
+  int prec;
+};
+struct Tree{
+  char* token;
+  Tree* left = NULL;
+  Tree* right = NULL;
+  ~Tree(){
+    delete[] token;
+  }
+};
 Node* head = NULL;
+Second* head2 = NULL;
+//functions for initial infix to postfix
 void push(char* ch,int a,char* as);
 Node* peek();
 Node* pop();
+//functions for second stack
+void push2(char* x);
+char* peek2();
+char* pop2();
+//tree stuff
+Tree* getTree();
 int main(){
-  cout << "HELLO!" << endl;
-  char input[100];
-  cin.getline(input,100);
-  //taking out spaces
+  cout << "Enter a Infix Expression!" << endl;
+  char input[128];
+  cin.getline(input,128);
   bool kg = false;
   int i = 0;
   size_t length = strlen(input);
-  //cout << "length of input: " << length << endl;
-  char ans[length];
-  ans[0] = '\0';
+  char infix[length];
+  infix[0] = '\0';
   while(kg == false){
-    push(input,i,ans);
+    push(input,i,infix);
     i++;
     if(i == length){
       //end of queue
       while(head != NULL){
 	Node* check = head;
 	Node* prev = head;
-	cout << "THE END THE END" << endl;
 	if(check->fir[0] != '('){
-	  size_t len = strlen(ans);
-	  ans[len] = check->fir[0];
-	  ans[len+1] = '\0';
+	  size_t len = strlen(infix);
+	  infix[len] = check->fir[0];
+	  infix[len+1] = '\0';
 	}
 	if(check->next != NULL){
 	  prev = check->next;
@@ -47,21 +65,76 @@ int main(){
 	//check = NULL;
 	delete check;
 	head = prev;
-	cout << "FINAL ANSWER: " << ans << endl;
+	cout << "FINAL ANSWER: " << infix << endl;
       }
       kg = true;
     }
   }
+  //New Stuff
+  int x = 0;
+  while(infix[x]){
+    if(infix[x] == ' '){
+      x++;
+      continue;
+    }
+    if(isdigit(infix[x])){
+      char n[10];
+      int i = 0;
+      while(isdigit(infix[x])){
+	n[i++] = infix[x++];
+      }
+      n[i++] = '\0';
+      push2(n);
+    }
+    else{
+      //has to be an operator at this point
+      char oper[2] = {infix[x++],'\0'};
+      push2(oper);
+    }
+  }
+  //line 73
+  Tree* root = getTree();
   return 0;
+}
+//pushing for the second stack
+void push2(char* x){
+  Second* current = new Second;
+  current->nex = head2;
+  strcpy(current->first,x);
+  head2 = current;
+}
+//points to the root of the expression tree based on the postfix expression given
+Tree* getTree(){
+  if(peek2() == 'a'){
+    cout << "1adasd" << endl;
+  }
+}
+//peeking for the second stack
+char* peek2(){
+  return head2->first;
+}
+//popping for the second stack
+char* pop2(){
+  if(head2 != NULL){
+    char* temp = new char[10];
+    strcpy(temp,head2->first);
+    Second* current = head2;
+    head2 = head2->nex;
+    delete current;
+    return temp;
+  }
+  else{
+    return 0;
+  }
 }
 //pushing the char to either the output queue or to the stack
 void push(char* ch,int a,char* as){
   if(isdigit(ch[a])){
-    cout << "digit" << endl;
+    //cout << "digit" << endl;
     size_t len = strlen(as);
     as[len] = ch[a];
     as[len+1] = '\0';
-    cout << "output queue: " << as << endl;
+    //cout << "output queue: " << as << endl;
   }
   if(ch[a] == '-' || ch[a] == '+' || ch[a] == '*' || ch[a] == '/' || ch[a] == '^'){
     int prec;//precedence
@@ -93,7 +166,7 @@ void push(char* ch,int a,char* as){
 	  break;
 	}
 	else{
-	  cout << "hello" << endl;
+	  //cout << "hello" << endl;
 	  Node* nn = pop();
 	  if(ch[a] != '('){
 	    size_t leng = strlen(as);
@@ -111,11 +184,11 @@ void push(char* ch,int a,char* as){
       temp->fir[0] = ch[a];
       temp->pre = prec;
       head = temp;
-      cout << "NEW NODEs" << endl;
+      //cout << "NEW NODEs" << endl;
     }
     Node* prin = head;
     while(prin != NULL){
-      cout << prin->fir[0] << " , " << prin->pre << endl;
+      //cout << prin->fir[0] << " , " << prin->pre << endl;
       prin = prin->next;
     }    
   }
