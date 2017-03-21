@@ -1,253 +1,237 @@
-//Colin Aslett, C++ Period 07, Expression Tree
+//Colin Aslett, C++ Period 07, Expression Tree, Can do various things, most likely
 #include <iostream>
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include "stack.h"
+#include "scstack.h"
+#include <cstring>
+//i have more than one thing for checking for operators and precedence because of ISO c++ rules or whatever
 using namespace std;
-struct Node{
-  char fir[1];
-  Node* next;
-  int pre;
-};
-struct Second{
-  char first[10];
-  Second* nex;
-};
+//its a tree yo, it holds the expressions and children 
 struct Tree{
-  char* token;
+  char* first;
   Tree* left = NULL;
   Tree* right = NULL;
   ~Tree(){
-    delete[] token;
+    delete[] first;
   }
 };
-Node* head = NULL;
-Second* head2 = NULL;
-//functions for initial infix to postfix
-void push(char* ch,int a,char* as);
-Node* peek();
-Node* pop();
-//functions for second stack
-void push2(char* x);
-char* peek2();
-char* pop2();
-//tree stuff
-Tree* getTree();
-//Is it an operator
-bool isOperator(char a);
-bool isOperator(char* a);
-bool isOperator(Tree* tree);
+char* Postfix(char* input);//translating from infix to postfix
+bool isOperator(char x);
+bool isOperator(char* x);
+bool isOperator(Tree* root);
+int precedence(char x);
+int precedence(char* x);
+int precedence(Tree* root);
+bool left(char x);
+void printPostfix(Tree* root);
+void printInfix(Tree* root);
+void Prefix(Tree* root);
+void deleteTree(Tree* root);
+Tree* getTree(scstack &infix);
 int main(){
-  cout << "Enter a Infix Expression!" << endl;
-  char input[128];
-  cin.getline(input,128);
-  bool kg = false;
-  int i = 0;
-  size_t length = strlen(input);
-  char infix[length];
-  infix[0] = '\0';
-  while(kg == false){
-    push(input,i,infix);
-    i++;
-    if(i == length){
-      //end of queue
-      while(head != NULL){
-	Node* check = head;
-	Node* prev = head;
-	if(check->fir[0] != '('){
-	  size_t len = strlen(infix);
-	  infix[len] = check->fir[0];
-	  infix[len+1] = '\0';
-	}
-	if(check->next != NULL){
-	  prev = check->next;
-	}
-	else{
-	  prev = NULL;
-	}
-	//check = NULL;
-	delete check;
-	head = prev;
-	cout << "FINAL ANSWER: " << infix << endl;
-      }
-      kg = true;
-    }
-  }
-  //New Stuff
-  int x = 0;
-  while(infix[x]){
-    if(infix[x] == ' '){
-      x++;
+  char input[100];
+  bool kg = true;
+  cout << "enter a infix expression" << endl;
+  cin.getline(input,100);
+  char* infix = Postfix(input);//the char array infix will hold the translation of infix to postfix
+  cout << infix << endl;
+  scstack sc;//making the second stack for translation, tree stack
+  int a = 0;
+  while(infix[a]){
+    if(infix[a] == ' '){
+      a++;
       continue;
     }
-    if(isdigit(infix[x])){
-      char n[10];
+    if(isdigit(infix[a])){
+      char ans[100];
       int i = 0;
-      while(isdigit(infix[x])){
-	n[i++] = infix[x++];
+      while(isdigit(infix[a])){
+	ans[i++] = infix[a++];
       }
-      n[i++] = '\0';
-      push2(n);
+      ans[i++] = '\0';
+      sc.push(ans);
     }
+    //only can be an operaotr at this point
     else{
-      //has to be an operator at this point
-      char oper[2] = {infix[x++],'\0'};
-      push2(oper);
+      char ax[2] = {infix[a++],'\0'};
+      sc.push(ax);
     }
   }
-  //line 73
-  Tree* root = getTree();
-  //cout << "enter prefix,postfix, or infix" << endl;
+  delete[] infix;
+  Tree* root = getTree(sc);
+  //what conversion/translation do you want?
+  cout << "infix?prefix?postfix?" << endl;
+  char inputx[128];
+  cin.getline(inputx,128);
+  if(strcmp(inputx,"prefix")==0){
+    Prefix(root);
+  }
+  else if(strcmp(inputx,"postfix")==0){
+    printPostfix(root);
+  }
+  else if(strcmp(inputx,"infix")==0){
+    printInfix(root);
+  }
+  else{
+    cout << "uh, thats not one of the commands" << endl; 
+  }
+  deleteTree(root);
   return 0;
 }
-//pushing for the second stack
-void push2(char* x){
-  Second* current = new Second;
-  current->nex = head2;
-  strcpy(current->first,x);
-  head2 = current;
+char* Postfix(char* input){
+  stack st;
+  char* postfix = new char[((strlen(input)+1)*3)];
+  int indexin = 0;
+  int indexpost = 0;
+  while(input[indexin]){
+    //empty space, continue on
+    if(input[indexin] == ' '){
+        indexin++;
+        continue;
+    }
+    //a digit, we can add it in onto the prefix char array
+    if(isdigit(input[indexin])){
+        while(isdigit(input[indexin])){
+	  postfix[indexpost++] = input[indexin++];
+        }
+        postfix[indexpost++] = ' ';
+    }
+    //an operator, check for conditions, then add it onto the stack
+    else if(isOperator(input[indexin])){
+        while(isOperator(st.peek()) &&
+               ( (left(input[indexin]) &&  precedence(input[indexin]) <= precedence(st.peek()))
+            || (!left(input[indexin]) && precedence(input[indexin]) < precedence(st.peek())))){
+                postfix[indexpost++] = st.pop();
+                postfix[indexpost++] = ' ';
+        }
+        st.push(input[indexin++]);
+    }
+    //right facing paranthesis, add it to the stack 
+    else if(input[indexin] == '('){
+        st.push(input[indexin++]);
+    }
+    //left facing paranthesis, POP EVERYTHING IN THE STACK
+    else if(input[indexin] == ')'){
+        while(st.peek() != '('){
+            postfix[indexpost++] = st.pop();
+            postfix[indexpost++] = ' ';
+            if(st.peek() == 0){
+                cout << "Error: mismatched parentheses." << endl;
+                break;
+            }
+        }
+        st.pop();
+        indexin++;
+    }
+  }
+  while(st.peek()){
+     postfix[indexpost++] = st.pop();
+     postfix[indexpost++] = ' ';
+  }
+  postfix[indexpost-1] = 0;
+  return postfix;
 }
-//points to the root of the expression tree based on the postfix expression given
-Tree* getTree(){
-  cout << "ahh" << endl;
-  cout << peek2();
-  if(isOperator(peek2())){
-    Tree* tree = new Tree();
-    tree->token = pop2();
-    tree->right = getTree();
-    tree->left = getTree();
-    return tree;
+//is it left or right?
+bool left(char x){
+  return x != '^';
+}
+//checks for operator, all 3 different types of possible combinations for trees and chars
+bool isOperator(char x){
+  if(x == '+' || x == '-' || x == '^' || x == '*' || x == '/'){
+    return true;
   }
   else{
-    Tree* rootx = new Tree();
-    rootx->token = pop2();
-    return rootx;
+    return false;
   }
 }
-//peeking for the second stack
-char* peek2(){
-  return head2 == NULL ? NULL : head2->first;
+bool isOperator(char* x){
+  return isOperator(*x);
 }
-//popping for the second stack
-char* pop2(){
-  if(head2 != NULL){
-    char* temp = new char[10];
-    strcpy(temp,head2->first);
-    Second* current = head2;
-    head2 = head2->nex;
-    delete current;
-    return temp;
+bool isOperator(Tree* root){
+  return isOperator(root->first);
+}
+//determines precedence for all three different types of inputs
+int precedence(char x){
+  if(x == '+' || x == '-'){
+    return 1;
+  }
+  if(x == '*' || x == '/'){
+    return 2;
+  }
+  if(x == '^'){
+    return 3;
+  }
+  return -1;
+}
+int precedence(char* x){
+  return precedence(*x);
+}
+int precedence(Tree* root){
+  return precedence(root->first);
+}
+//creating the tree dude
+Tree* getTree(scstack &infix){
+  if(isOperator(infix.peek())){
+    Tree* current = new Tree();
+    current->first = infix.pop();
+    current->right = getTree(infix);
+    current->left = getTree(infix);
+    return current;
   }
   else{
-    return 0;
+    Tree* currentx = new Tree();
+    currentx->first = infix.pop();
+    return currentx;
   }
 }
-//pushing the char to either the output queue or to the stack
-void push(char* ch,int a,char* as){
-  if(isdigit(ch[a])){
-    //cout << "digit" << endl;
-    size_t len = strlen(as);
-    as[len] = ch[a];
-    as[len+1] = '\0';
-    //cout << "output queue: " << as << endl;
+//postfix printing out
+void printPostfix(Tree* root){
+  if(isOperator(root->first)){
+    printPostfix(root->left);
+    printPostfix(root->right);
+    cout << root->first << ' ';
   }
-  if(ch[a] == '-' || ch[a] == '+' || ch[a] == '*' || ch[a] == '/' || ch[a] == '^'){
-    int prec;//precedence
-    if(ch[a] == '-'){
-      prec = 2;
-    }
-    if(ch[a] == '+'){
-      prec = 2;
-    }
-    if(ch[a] == '/'){
-      prec = 3;
-    }
-    if(ch[a] == '*'){
-      prec = 3;
-    }
-    if(ch[a] == '^'){
-      prec = 4;
-    }
-    Node* current = head;
-    if(current == NULL){
-      head = new Node;
-      head->next = NULL;
-      head->fir[0] = ch[a];
-      head->pre = prec;
+  else{
+    cout << root->first << ' ';
+  }
+}
+//infix printing out
+void printInfix(Tree* root){
+  if(isOperator(root->first)){
+    if(isOperator(root->left)){
+      printInfix(root->left);
     }
     else{
-      while(peek()->pre > prec || peek()->pre == prec){
-	if(peek()->pre == 4 & prec == 4){
-	  break;
-	}
-	else{
-	  //cout << "hello" << endl;
-	  Node* nn = pop();
-	  if(ch[a] != '('){
-	    size_t leng = strlen(as);
-	    as[leng] = nn->fir[0];
-	    as[leng+1] = '\0';
-	  }
-          delete nn;
-	}
-        if(peek() == NULL){
-	  break;
-	}
-      }
-      Node* temp = new Node;
-      temp->next = head;
-      temp->fir[0] = ch[a];
-      temp->pre = prec;
-      head = temp;
-      //cout << "NEW NODEs" << endl;
+      printInfix(root->left);
     }
-    Node* prin = head;
-    while(prin != NULL){
-      //cout << prin->fir[0] << " , " << prin->pre << endl;
-      prin = prin->next;
-    }    
-  }
-  if(ch[a] == ')' || ch[a] == '('){
-    if(ch[a] == ')'){
-      while(peek()->fir[0] != '('){
-	Node* nnn = pop();
-	if(ch[a] != '('){
-	  size_t lengx = strlen(as);
-	  as[lengx] = nnn->fir[0];
-	  as[lengx+1] = '\0';
-	}
-	delete nnn;
-      }
+    cout << root->first << ' ';
+    if(isOperator(root->right)){
+      printInfix(root->right);
     }
-    if(ch[a] == '('){
-      Node* tempx = new Node;
-      tempx->next = head;
-      tempx->fir[0] = ch[a];
-      tempx->pre = 0;
-      head = tempx;
+    else{
+      printInfix(root->right);
     }
   }
-}
-//peeking at the head of the stack
-Node* peek(){
-  return head;
-}
-//popping the thingy off the stack
-Node* pop(){
-  if(head == NULL){
-    return NULL;
+  else{
+    cout << root->first << ' ';
   }
-  Node* temp = head;
-  head = head->next;
-  return temp;
 }
-//all of the is operators
-bool isOperator(char a){
-  return a == '+' || a == '/' || a == '-' || a == '*' || a == '^';
+//prefix printing out
+void Prefix(Tree* root){
+  if(isOperator(root->first)){
+    cout << root->first << ' ';
+    Prefix(root->left);
+    Prefix(root->right);
+  }
+  else{
+    cout << root->first << ' ';
+  }
 }
-bool isOperator(Tree* tree){
-  return isOperator(tree->token);
-}
-bool isOperator(char* a){
-  return isOperator(*a);
+//deleting the tree
+void deleteTree(Tree* root){
+  //if it is not empty than we gotta destroy its children
+  if(root != 0){
+    deleteTree(root->left);
+    deleteTree(root->right);
+    delete root;
+  }
 }
